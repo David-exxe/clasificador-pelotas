@@ -4,67 +4,64 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Clasificador de Pelotas</title>
+    <style>
+        body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
+        #image-preview { max-width: 300px; max-height: 300px; margin-top: 15px; border-radius: 8px; }
+        #label-container { margin-top: 20px; font-weight: bold; font-size: 1.1em; }
+    </style>
 </head>
 <body>
-    <h3>Teachable Machine Image Model</h3>
-    <button type="button" onclick="init()">Start</button>
-    <div id="webcam-container" style="margin-top: 10px;"></div>
-    <div id="label-container" style="margin-top: 10px; font-weight: bold;"></div>
+    <h2>Clasificador de Pelotas (Por Imagen)</h2>
+    
+    <input type="file" id="image-upload" accept="image/*" onchange="predictImage(event)" />
+    <br>
+    <img id="image-preview" src="" alt="Previsualización de la imagen" style="display: none;" />
+    
+    <div id="label-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
     <script type="text/javascript">
         const URL = "./";
+        let model, labelContainer, maxPredictions;
 
-        let model, webcam, labelContainer, maxPredictions;
-
-        async function init() {
-            // Forzar el uso de la CPU si WebGL falla
-            try {
-                await tf.setBackend('cpu');
-            } catch (e) {
-                console.warn("No se pudo establecer el backend CPU:", e);
-            }
-
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
-
-            try {
+        async function initModel() {
+            if (!model) {
+                const modelURL = URL + "model.json";
+                const metadataURL = URL + "metadata.json";
                 model = await tmImage.load(modelURL, metadataURL);
                 maxPredictions = model.getTotalClasses();
-
-                const flip = true; 
-                webcam = new tmImage.Webcam(200, 200, flip); 
-                await webcam.setup(); 
-                await webcam.play();
-                window.requestAnimationFrame(loop);
-
-                document.getElementById("webcam-container").appendChild(webcam.canvas);
+                
                 labelContainer = document.getElementById("label-container");
                 labelContainer.innerHTML = "";
                 for (let i = 0; i < maxPredictions; i++) {
                     labelContainer.appendChild(document.createElement("div"));
                 }
-            } catch (error) {
-                console.error("Error:", error);
-                alert("Ocurrió un problema: " + error.message);
             }
         }
 
-        async function loop() {
-            webcam.update();
-            await predict();
-            window.requestAnimationFrame(loop);
-        }
+        async function predictImage(event) {
+            const file = event.target.files[0];
+            if (!file) return;
 
-        async function predict() {
-            const prediction = await model.predict(webcam.canvas);
-            for (let i = 0; i < maxPredictions; i++) {
-                const classPrediction =
-                    prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(1) + "%";
-                labelContainer.childNodes[i].innerHTML = classPrediction;
-            }
+            // Mostrar la imagen seleccionada
+            const imgElement = document.getElementById("image-preview");
+            imgElement.src = window.URL.createObjectURL(file);
+            imgElement.style.display = "inline-block";
+
+            // Asegurar que el modelo esté cargado
+            await initModel();
+
+            // Esperar a que la imagen cargue en el DOM para predecir
+            imgElement.onload = async () => {
+                const prediction = await model.predict(imgElement);
+                for (let i = 0; i < maxPredictions; i++) {
+                    const classPrediction =
+                        prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(1) + "%";
+                    labelContainer.childNodes[i].innerHTML = classPrediction;
+                }
+            };
         }
     </script>
 </body>
