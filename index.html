@@ -6,10 +6,10 @@
     <title>Clasificador de Pelotas</title>
 </head>
 <body>
-    <div>Teachable Machine Image Model</div>
+    <h3>Teachable Machine Image Model</h3>
     <button type="button" onclick="init()">Start</button>
-    <div id="webcam-container"></div>
-    <div id="label-container"></div>
+    <div id="webcam-container" style="margin-top: 10px;"></div>
+    <div id="label-container" style="margin-top: 10px; font-weight: bold;"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
@@ -20,26 +20,35 @@
         let model, webcam, labelContainer, maxPredictions;
 
         async function init() {
+            // Forzar el uso de la CPU si WebGL falla
+            try {
+                await tf.setBackend('cpu');
+            } catch (e) {
+                console.warn("No se pudo establecer el backend CPU:", e);
+            }
+
             const modelURL = URL + "model.json";
             const metadataURL = URL + "metadata.json";
 
-            // Cargar modelo
-            model = await tmImage.load(modelURL, metadataURL);
-            maxPredictions = model.getTotalClasses();
+            try {
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
 
-            // Configurar webcam con parámetros explícitos
-            const flip = true; 
-            webcam = new tmImage.Webcam(300, 300, flip); 
-            await webcam.setup({ facingMode: "user" }); // Solicita cámara frontal/webcam explícitamente
-            await webcam.play();
-            window.requestAnimationFrame(loop);
+                const flip = true; 
+                webcam = new tmImage.Webcam(200, 200, flip); 
+                await webcam.setup(); 
+                await webcam.play();
+                window.requestAnimationFrame(loop);
 
-            // Agregar la webcam y las etiquetas al DOM
-            document.getElementById("webcam-container").appendChild(webcam.canvas);
-            labelContainer = document.getElementById("label-container");
-            labelContainer.innerHTML = ""; // Limpiar antes de agregar
-            for (let i = 0; i < maxPredictions; i++) {
-                labelContainer.appendChild(document.createElement("div"));
+                document.getElementById("webcam-container").appendChild(webcam.canvas);
+                labelContainer = document.getElementById("label-container");
+                labelContainer.innerHTML = "";
+                for (let i = 0; i < maxPredictions; i++) {
+                    labelContainer.appendChild(document.createElement("div"));
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                alert("Ocurrió un problema: " + error.message);
             }
         }
 
